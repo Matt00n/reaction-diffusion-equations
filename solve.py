@@ -9,7 +9,7 @@ import math
 
 ############# TODO #############
 # TODO setup notebook to generate all tables & figures
-# TODO Docstrings, comments & README
+# TODO Docstrings & README
 # TODO (OPTIONAL) benchmark against to SymPy
 # TODO cleanup on aisle 5
 # TODO check format of multi-plotters --> modify tight layout rect
@@ -25,8 +25,8 @@ def thomas_algorithm(
     """
     Thomas-Algorithmus
     """
-    n = len(b)
-    u = np.zeros(n, np.float64)
+    n = len(b) # get n
+    u = np.zeros(n, np.float64) # initialize solution array
 
     # elimination
     for i in range(1, n):
@@ -81,6 +81,8 @@ class ReactionDiffusionEquation():
         """
         TODO
         """
+        # NOTE: here n is the total number of mesh points, i.e. n = N + 1
+
         # assert n >= 3
         if n < 3:
             raise ValueError("n must be greater than 2")
@@ -90,35 +92,42 @@ class ReactionDiffusionEquation():
             raise ValueError("sigma must be greater equal than 4 when using a Shishkin mesh with advanced_solve")
 
         if shishkin_mesh:
+            # increase N if needed such that N is divisible by 4
             if (n-1) % 4 != 0:
                 n = 4 * ((n-1) // 4 + 1) + 1  
                 if verbose:
                     print(f'a Shishkin mesh requires n-1 to be divisible by 4, n adjusted to {n}')
 
+            # compute shishkin mesh
             tau = np.minimum(1/4, np.log(n-1) * sigma * eps / self.gamma)
             if verbose:
                 print(f'tau = {tau}')
             h1 = np.ones(int((n-1) / 4), np.float64) * tau / ((n-1) / 4)
             h2 = np.ones(int((n-1) / 2), np.float64) * (1 - 2 * tau) / ((n-1) / 2)
-            h = np.concatenate([h1, h2, h1])
+            h = np.concatenate([h1, h2, h1]) # fuse piecewise uniform meshes
         else:
-            h = np.ones(n-1, np.float64) * 1/(n-1)
+            h = np.ones(n-1, np.float64) * 1/(n-1) # uniform mesh
 
+        # get x values of mesh
         x = np.zeros(n, np.float64)
-        x[1:] = np.cumsum(h)
+        x[1:] = np.cumsum(h) 
+        # computation of x from mesh distances may cause rounding errors
+        # hence we set the last value to 1 manually if needed
         if x[-1] != 1:
             if verbose:
                 print(f'x_N adjusted from {x[-1]} to 1 due to rounding errors')
             x[-1] = 1
 
+        # get the tridiagonal system of linear equations 
         e, d, f, b = self._init_sle(x=x, h=h, eps=eps, n=n, advanced_solve=advanced_solve)
 
         if verbose:
-            self._print_sle(n=n, e=e, d=d, f=f, b=b)
+            self._print_sle(n=n, e=e, d=d, f=f, b=b) # print system of equations
 
-        u = thomas_algorithm(e=e, d=d, f=f, b=b)
+        u = thomas_algorithm(e=e, d=d, f=f, b=b) # solve
 
         if double_mesh:
+            # get the reference solution based on the double mesh principle
             x_ref, u_ref = self._get_reference_solution(x, eps=eps, n=n, advanced_solve=advanced_solve)
             return (x, u), (x_ref, u_ref)
         else:
@@ -138,27 +147,29 @@ class ReactionDiffusionEquation():
         support: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
         
+        # get solution
         x, u = self.solve(eps=eps, n=n, shishkin_mesh=shishkin_mesh, sigma=sigma, 
                             advanced_solve=advanced_solve, verbose=verbose)
 
+        # plotting
         plt.figure(figsize=(16,10))
         if scatter:
             sns.scatterplot(x=x, y=u, color='black')
 
+        # interpolate approximations at mesh points
         if interpolation == 'linear':
             sns.lineplot(x=x, y=u, linewidth=3, color='orange')
         elif interpolation == 'quadratic':
             f = interp1d(x, u, kind=interpolation)
             xnew = np.linspace(0., 1., 100)
-            ynew = f(xnew)   # use interpolation function returned by `interp1d`
+            ynew = f(xnew)   
             plt.plot(xnew, ynew, '-', linewidth=3, color='orange')
-
         elif interpolation == 'cubic':
             if n < 4:
                 raise ValueError('n must be greater than 3 for cubic interpolation')
             f = interp1d(x, u, kind=interpolation)
             xnew = np.linspace(0., 1., 100)
-            ynew = f(xnew)   # use interpolation function returned by `interp1d`
+            ynew = f(xnew) 
             plt.plot(xnew, ynew, '-', linewidth=3, color='orange')
 
         if support:
@@ -185,10 +196,13 @@ mesh with {n} mesh points', fontsize=20)
         advanced_solve: bool = False,
         verbose: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
+        # increase N to be divisible by 4 if using a Shishkin mesh
         if shishkin_mesh:
             if (n-1) % 4 != 0:
                 n = 4 * ((n-1) // 4 + 1) + 1  
         solutions = []
+
+        # get approximations for each epsilon
         for e in eps:
             x, u = self.solve(eps=e, n=n, shishkin_mesh=shishkin_mesh, sigma=sigma, 
                             advanced_solve=advanced_solve, verbose=verbose)
@@ -209,8 +223,11 @@ mesh with {n} mesh points', fontsize=20)
         scatter: bool = True,
         support: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
+        # get solutions
         solutions = self.solve_multiple_eps(eps=eps, n=n, shishkin_mesh=shishkin_mesh, sigma=sigma, 
                                             advanced_solve=advanced_solve, verbose=verbose)
+        
+        # plotting
         if subplots:
             height = 5 * math.ceil(len(eps)/2)
             fig, axes = plt.subplots(math.ceil(len(eps)/2), 2, figsize=(16,height), tight_layout=True)
@@ -219,12 +236,13 @@ mesh with {n} mesh points', fontsize=20)
                 if scatter:
                     sns.scatterplot(x=x, y=u, color='black', ax=ax)
 
+                # interpolate approximations at mesh points
                 if interpolation == 'linear':
                     sns.lineplot(x=x, y=u, linewidth=3, color='orange', ax=ax)
                 elif interpolation == 'quadratic':
                     f = interp1d(x, u, kind=interpolation)
                     xnew = np.linspace(0., 1., 100)
-                    ynew = f(xnew)   # use interpolation function returned by `interp1d`
+                    ynew = f(xnew) 
                     ax.plot(xnew, ynew, '-', linewidth=3, color='orange')
 
                 elif interpolation == 'cubic':
@@ -232,7 +250,7 @@ mesh with {n} mesh points', fontsize=20)
                         raise ValueError('n must be greater than 3 for cubic interpolation')
                     f = interp1d(x, u, kind=interpolation)
                     xnew = np.linspace(0., 1., 100)
-                    ynew = f(xnew)   # use interpolation function returned by `interp1d`
+                    ynew = f(xnew) 
                     ax.plot(xnew, ynew, '-', linewidth=3, color='orange')
 
                 if support:
@@ -256,18 +274,19 @@ mesh \n with {n} mesh points for various values of epsilon', fontsize=20)
                 if scatter:
                     sns.scatterplot(x=x, y=u, color='black')
 
+                # interpolate approximations at mesh points
                 if interpolation == 'linear':
                     sns.lineplot(x=x, y=u, linewidth=2, label=f'eps = {eps[i]}')
                 elif interpolation == 'quadratic':
                     f = interp1d(x, u, kind=interpolation)
                     xnew = np.linspace(0., 1., 100)
-                    ynew = f(xnew)   # use interpolation function returned by `interp1d`
+                    ynew = f(xnew)  
                     plt.plot(xnew, ynew, '-', linewidth=2, label=f'eps = {eps[i]}')
 
                 elif interpolation == 'cubic':
                     f = interp1d(x, u, kind=interpolation)
                     xnew = np.linspace(0., 1., 100)
-                    ynew = f(xnew)   # use interpolation function returned by `interp1d`
+                    ynew = f(xnew)
                     plt.plot(xnew, ynew, '-', linewidth=2, label=f'eps = {eps[i]}')
 
             if support and not shishkin_mesh:
@@ -295,7 +314,7 @@ mesh with {n} mesh points \n for various values of epsilon', fontsize=20)
         advanced_solve: bool = False,
         verbose: bool = False,
     ) -> List:
-        
+        # get approximations for each n
         solutions = []
         for i in n:
             x, u = self.solve(eps=eps, n=i, shishkin_mesh=shishkin_mesh, sigma=sigma, 
@@ -316,9 +335,10 @@ mesh with {n} mesh points \n for various values of epsilon', fontsize=20)
         subplots: bool = True,
         scatter: bool = True,
     ) -> List:
+        # get solutions for each n
         solutions = self.solve_multiple_n(eps=eps, n=n, shishkin_mesh=shishkin_mesh, sigma=sigma, 
                                             advanced_solve=advanced_solve, verbose=verbose)
-
+        # plotting
         if subplots:
             height = 5 * math.ceil(len(n)/2)
             fig, axes = plt.subplots(math.ceil(len(n)/2), 2, figsize=(16,height), tight_layout=True)
@@ -327,12 +347,13 @@ mesh with {n} mesh points \n for various values of epsilon', fontsize=20)
                 if scatter:
                     sns.scatterplot(x=x, y=u, color='black', ax=ax)
 
+                # interpolate approximations at mesh points
                 if interpolation == 'linear':
                     sns.lineplot(x=x, y=u, linewidth=3, color='orange', ax=ax)
                 elif interpolation == 'quadratic':
                     f = interp1d(x, u, kind=interpolation)
                     xnew = np.linspace(0., 1., 100)
-                    ynew = f(xnew)   # use interpolation function returned by `interp1d`
+                    ynew = f(xnew)  
                     ax.plot(xnew, ynew, '-', linewidth=3, color='orange')
 
                 elif interpolation == 'cubic':
@@ -340,7 +361,7 @@ mesh with {n} mesh points \n for various values of epsilon', fontsize=20)
                         raise ValueError('n must be greater than 3 for cubic interpolation')
                     f = interp1d(x, u, kind=interpolation)
                     xnew = np.linspace(0., 1., 100)
-                    ynew = f(xnew)   # use interpolation function returned by `interp1d`
+                    ynew = f(xnew) 
                     ax.plot(xnew, ynew, '-', linewidth=3, color='orange')
 
                 ax.set_title(f'n = {n[i]}')
@@ -359,18 +380,19 @@ mesh for various values of n', fontsize=20)
                 if scatter:
                     sns.scatterplot(x=x, y=u, color='black')
 
+                # interpolate approximations at mesh points
                 if interpolation == 'linear':
                     sns.lineplot(x=x, y=u, linewidth=2, label=f'n = {n[i]}')
                 elif interpolation == 'quadratic':
                     f = interp1d(x, u, kind=interpolation)
                     xnew = np.linspace(0., 1., 100)
-                    ynew = f(xnew)   # use interpolation function returned by `interp1d`
+                    ynew = f(xnew) 
                     plt.plot(xnew, ynew, '-', linewidth=2, label=f'n = {n[i]}')
 
                 elif interpolation == 'cubic':
                     f = interp1d(x, u, kind=interpolation)
                     xnew = np.linspace(0., 1., 100)
-                    ynew = f(xnew)   # use interpolation function returned by `interp1d`
+                    ynew = f(xnew) 
                     plt.plot(xnew, ynew, '-', linewidth=2, label=f'n = {n[i]}')
 
             plt.legend()
@@ -393,6 +415,7 @@ mesh for various values of n', fontsize=20)
         subplots: bool = True,
         scatter: bool = True,
     ) -> None:
+        # get approximations via each method
         x_base, u_base = self.solve(eps=eps, n=n, shishkin_mesh=False, sigma=sigma[0], 
                             advanced_solve=False, verbose=False)
         x_opt, u_opt = self.solve(eps=eps, n=n, shishkin_mesh=True, sigma=sigma[0], 
@@ -404,6 +427,7 @@ mesh for various values of n', fontsize=20)
         solutions = [(x_base, u_base), (x_opt, u_opt), (x_adv, u_adv), (x_full, u_full)]
         titles = {0: 'base sol.', 1: 'opt. grid', 2: 'adv. sol.', 3: 'adv. sol. w/ opt. grid'}
         
+        # plotting
         if subplots:
             fig, axes = plt.subplots(2, 2, figsize=(16,10), tight_layout=True)
             for i, ((x, u), ax) in enumerate(zip(solutions, axes.flatten())):
@@ -411,12 +435,13 @@ mesh for various values of n', fontsize=20)
                 if scatter:
                     sns.scatterplot(x=x, y=u, color='black', ax=ax)
 
+                # interpolate approximations at mesh points
                 if interpolation == 'linear':
                     sns.lineplot(x=x, y=u, linewidth=3, color='orange', ax=ax)
                 elif interpolation == 'quadratic':
                     f = interp1d(x, u, kind=interpolation)
                     xnew = np.linspace(0., 1., 100)
-                    ynew = f(xnew)   # use interpolation function returned by `interp1d`
+                    ynew = f(xnew)  
                     ax.plot(xnew, ynew, '-', linewidth=3, color='orange')
 
                 elif interpolation == 'cubic':
@@ -424,7 +449,7 @@ mesh for various values of n', fontsize=20)
                         raise ValueError('n must be greater than 3 for cubic interpolation')
                     f = interp1d(x, u, kind=interpolation)
                     xnew = np.linspace(0., 1., 100)
-                    ynew = f(xnew)   # use interpolation function returned by `interp1d`
+                    ynew = f(xnew)  
                     ax.plot(xnew, ynew, '-', linewidth=3, color='orange')
 
                 ax.set_title(titles[i])
@@ -443,18 +468,19 @@ using different approaches', fontsize=20)
                 if scatter:
                     sns.scatterplot(x=x, y=u, color='black')
 
+                # interpolate approximations at mesh points
                 if interpolation == 'linear':
                     sns.lineplot(x=x, y=u, linewidth=2, label=titles[i])
                 elif interpolation == 'quadratic':
                     f = interp1d(x, u, kind=interpolation)
                     xnew = np.linspace(0., 1., 100)
-                    ynew = f(xnew)   # use interpolation function returned by `interp1d`
+                    ynew = f(xnew)   
                     plt.plot(xnew, ynew, '-', linewidth=2, label=titles[i])
 
                 elif interpolation == 'cubic':
                     f = interp1d(x, u, kind=interpolation)
                     xnew = np.linspace(0., 1., 100)
-                    ynew = f(xnew)   # use interpolation function returned by `interp1d`
+                    ynew = f(xnew)  
                     plt.plot(xnew, ynew, '-', linewidth=2, label=titles[i])
 
             plt.legend()
@@ -472,8 +498,11 @@ using different approaches', fontsize=20)
         """
 
         if not callable(self.c):
+            # if constant coefficient
             return np.sqrt(self.c)
         else:
+            # for variable coefficients
+            # set up optimizer
             bounds = [(0., 1.)]
             minimizer_kwargs = dict(method="L-BFGS-B", bounds=bounds)
             take_step = BoundedOptimizerStep(stepsize=self.gamma_init_step)
@@ -493,17 +522,15 @@ using different approaches', fontsize=20)
         generates a reference solution using the double mesh principle.
         """
         
-        # calculate new x
+        # calculate new x by bisecting all intervals 
         x_mid_points = 0.5*(x_old[1:] + x_old[:-1])
         x = np.sort(np.concatenate([x_old, x_mid_points]))
-        # calculate new h
-        h = np.diff(x)
-
-        n = len(x)
-
+        
+        h = np.diff(x) # calculate new h
+        n = len(x) 
+        # initialize system of equations
         e, d, f, b = self._init_sle(x=x, h=h, eps=eps, n=n, advanced_solve=advanced_solve)
-
-        u = thomas_algorithm(e=e, d=d, f=f, b=b)
+        u = thomas_algorithm(e=e, d=d, f=f, b=b) # solve
 
         return x, u
 
@@ -516,20 +543,22 @@ using different approaches', fontsize=20)
         n: int, 
         advanced_solve: bool,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        # initialization
         e = np.zeros(n, np.float64)
         d = np.ones(n, np.float64)
         f = np.zeros(n, np.float64)
 
-        # initialization
         # first & last row determined by u(x_0) = u(x_n-1) = 0
         if advanced_solve:
             b = np.zeros(n, np.float64)
             
             for i in range(1, n-1):
+                # using advanced finite difference scheme
                 mu_plus, mu_zero, mu_minus, nu_plus, nu_zero, nu_minus = self._get_adv_coefficients(i, x, h_plus=h[i], h_minus=h[i-1], eps=eps)
 
                 b[i] = nu_plus * self.f(x[i+1]) + nu_zero * self.f(x[i]) + nu_minus * self.f(x[i-1])
-                # note: h shifted compared to problem description
+                # NOTE: h shifted compared to problem description
+                # i.e. h[0] = h_1 etc.
                 if callable(self.c):
                     c_plus = self.c(x[i+1])
                     c_zero = self.c(x[i])
@@ -543,12 +572,14 @@ using different approaches', fontsize=20)
                 f[i] = -2 * eps**2 / ((h[i-1] + h[i]) * h[i]) + mu_plus * c_plus
 
         else:
+            # basic finite difference method
             b = self.f(x)
             # setting boundary values
             b[0] = 0
             b[-1] = 0
             for i in range(1, n-1):
-                # note: h shifted compared to problem description
+                # NOTE: h shifted compared to problem description
+                # i.e. h[0] = h_1 etc.
                 e[i] = -2 * eps**2 / ((h[i-1] + h[i]) * h[i-1])
                 c = self.c(x[i]) if callable(self.c) else self.c
                 d[i] = 2 * eps**2 / (h[i-1] + h[i]) * (1 / h[i-1] + 1 / h[i]) + c
@@ -559,6 +590,9 @@ using different approaches', fontsize=20)
 
     def _get_adv_coefficients(self, i, x, h_plus, h_minus, eps):
         # raise NotImplementedError
+
+        # coefficients determined such that the finite difference scheme
+        # yields exact solutions for all polynomials with degree <= 5
         if callable(self.c):
             c_plus = self.c(x[i+1])
             c_zero = self.c(x[i])
@@ -640,6 +674,7 @@ using different approaches', fontsize=20)
         b: np.ndarray,
     ) -> None:
         print('Solving the system of linear equations given by the following augmented matrix (numbers rounded):')
+        # fuse vectors into the respective augmented tridiagonal matrix
         sle = np.zeros((n, n+1))
         for i in range(n):
             if i > 0:
@@ -648,7 +683,10 @@ using different approaches', fontsize=20)
                 sle[i, i+1] = f[i]
             sle[i, i] = d[i]
             sle[i, -1] = b[i]
-        sle = np.round(sle, 5)
+
+        sle = np.round(sle, 5) # round for nicer printing
+
+        # print pretty table
         s = [[str(e) for e in row] for row in sle]
         for row in s:
             row.insert(-1, '|')

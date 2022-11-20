@@ -28,17 +28,17 @@ def thomas_algorithm(
     n = len(b)
     u = np.zeros(n, np.float64)
 
-    # Elimination
+    # elimination
     for i in range(1, n):
-        l = e[i] / d[i-1] # TODO: save divide
+        l = e[i] / d[i-1] 
         d[i] = d[i] - l * f[i-1]
         b[i] = b[i] - l * b[i-1]
 
-    # Rückwärtsersetzung
-    u[n-1] = b[n-1] / d[n-1] # TODO: save divide
+    # backward substitution
+    u[n-1] = b[n-1] / d[n-1] 
     for i in range(1, n):
         ind = n - i - 1
-        u[ind] = (b[ind] - f[ind] * u[ind+1]) / d[ind] # TODO: save divide
+        u[ind] = (b[ind] - f[ind] * u[ind+1]) / d[ind] 
 
     return u
 
@@ -111,81 +111,10 @@ class ReactionDiffusionEquation():
                 print(f'x_N adjusted from {x[-1]} to 1 due to rounding errors')
             x[-1] = 1
 
-        #u = np.zeros(n, np.float64)
-        # e = np.zeros(n, np.float64)
-        # d = np.ones(n, np.float64)
-        # f = np.zeros(n, np.float64)
-
-        # # initialization
-        # # first & last row determined by u(x_0) = u(x_n-1) = 0
-        # if advanced_solve:
-        #     b = np.zeros(n, np.float64)
-            
-        #     for i in range(1, n-1):
-        #         mu_plus, mu_zero, mu_minus, nu_plus, nu_zero, nu_minus = self._get_adv_coefficients(i, x, h_plus=h[i], h_minus=h[i-1], eps=eps)
-
-        #         b[i] = nu_plus * self.f(x[i+1]) + nu_zero * self.f(x[i]) + nu_minus * self.f(x[i-1])
-        #         # note: h shifted compared to problem description
-        #         if callable(self.c):
-        #             c_plus = self.c(x[i+1])
-        #             c_zero = self.c(x[i])
-        #             c_minus = self.c(x[i-1])
-        #         else:
-        #             c_plus = self.c
-        #             c_zero = self.c
-        #             c_minus = self.c
-        #         e[i] = -2 * eps**2 / ((h[i-1] + h[i]) * h[i-1]) + mu_minus * c_minus
-        #         d[i] = 2 * eps**2 / (h[i-1] + h[i]) * (1 / h[i-1] + 1 / h[i]) + mu_zero * c_zero
-        #         f[i] = -2 * eps**2 / ((h[i-1] + h[i]) * h[i]) + mu_plus * c_plus
-
-        # else:
-        #     b = self.f(x)
-        #     # setting boundary values
-        #     b[0] = 0
-        #     b[-1] = 0
-        #     for i in range(1, n-1):
-        #         # note: h shifted compared to problem description
-        #         e[i] = -2 * eps**2 / ((h[i-1] + h[i]) * h[i-1])
-        #         c = self.c(x[i]) if callable(self.c) else self.c
-        #         d[i] = 2 * eps**2 / (h[i-1] + h[i]) * (1 / h[i-1] + 1 / h[i]) + c
-        #         f[i] = -2 * eps**2 / ((h[i-1] + h[i]) * h[i])
-
         e, d, f, b = self._init_sle(x=x, h=h, eps=eps, n=n, advanced_solve=advanced_solve)
 
         if verbose:
             self._print_sle(n=n, e=e, d=d, f=f, b=b)
-
-            # print('Solving the system of linear equations given by the following augmented matrix:')
-            # les = np.zeros((n, n+1))
-            # for i in range(n):
-            #     if i > 0:
-            #         les[i, i-1] = e[i]
-            #     if i < n:
-            #         les[i, i+1] = f[i]
-            #     les[i, i] = d[i]
-            #     les[i, -1] = b[i]
-            # #les = np.round(les, 5)
-            # s = [[str(e) for e in row] for row in les]
-            # for row in s:
-            #     row.insert(-1, '|')
-            # lens = [max(map(len, col)) for col in zip(*s)]
-            # fmt = '\t'.join('{{:{}}}'.format(x) for x in lens)
-            # table = [fmt.format(*row) for row in s]
-            # print('\n'.join(table))
-        
-
-        # Thomas-Algorithmus
-        # Elimination
-        # for i in range(1, n):
-        #     l = e[i] / d[i-1] # TODO: save divide
-        #     d[i] = d[i] - l * f[i-1]
-        #     b[i] = b[i] - l * b[i-1]
-
-        # # Rückwärtsersetzung
-        # u[n-1] = b[n-1] / d[n-1] # TODO: save divide
-        # for i in range(1, n):
-        #     ind = n - i - 1
-        #     u[ind] = (b[ind] - f[ind] * u[ind+1]) / d[ind] # TODO: save divide
 
         u = thomas_algorithm(e=e, d=d, f=f, b=b)
 
@@ -572,61 +501,7 @@ using different approaches', fontsize=20)
 
         n = len(x)
 
-        # u = np.zeros(n, np.float64)
-        # e = np.zeros(n, np.float64)
-        # d = np.ones(n, np.float64)
-        # f = np.zeros(n, np.float64)
-
-        # # initialization
-        # # first & last row determined by u(x_0) = u(x_n-1) = 0
-        # if advanced_solve:
-        #     b = np.zeros(n, np.float64)
-            
-        #     for i in range(1, n-1):
-        #         mu_plus, mu_zero, mu_minus, nu_plus, nu_zero, nu_minus = self._get_adv_coefficients(i, x, h_plus=h[i], h_minus=h[i-1], eps=eps)
-
-        #         b[i] = nu_plus * self.f(x[i+1]) + nu_zero * self.f(x[i]) + nu_minus * self.f(x[i-1])
-        #         # note: h shifted compared to problem description
-        #         if callable(self.c):
-        #             c_plus = self.c(x[i+1])
-        #             c_zero = self.c(x[i])
-        #             c_minus = self.c(x[i-1])
-        #         else:
-        #             c_plus = self.c
-        #             c_zero = self.c
-        #             c_minus = self.c
-        #         e[i] = -2 * eps**2 / ((h[i-1] + h[i]) * h[i-1]) + mu_minus * c_minus
-        #         d[i] = 2 * eps**2 / (h[i-1] + h[i]) * (1 / h[i-1] + 1 / h[i]) + mu_zero * c_zero
-        #         f[i] = -2 * eps**2 / ((h[i-1] + h[i]) * h[i]) + mu_plus * c_plus
-
-        # else:
-        #     b = self.f(x)
-        #     # setting boundary values
-        #     b[0] = 0
-        #     b[-1] = 0
-        #     for i in range(1, n-1):
-        #         # note: h shifted compared to problem description
-        #         e[i] = -2 * eps**2 / ((h[i-1] + h[i]) * h[i-1])
-        #         c = self.c(x[i]) if callable(self.c) else self.c
-        #         d[i] = 2 * eps**2 / (h[i-1] + h[i]) * (1 / h[i-1] + 1 / h[i]) + c
-        #         f[i] = -2 * eps**2 / ((h[i-1] + h[i]) * h[i])
-
         e, d, f, b = self._init_sle(x=x, h=h, eps=eps, n=n, advanced_solve=advanced_solve)
-        
-        # init can be combined with thomas to avoid looping twice
-
-        # Thomas-Algorithmus
-        # Elimination
-        # for i in range(1, n):
-        #     l = e[i] / d[i-1] # TODO: save divide
-        #     d[i] = d[i] - l * f[i-1]
-        #     b[i] = b[i] - l * b[i-1]
-
-        # # Rückwärtsersetzung
-        # u[n-1] = b[n-1] / d[n-1] # TODO: save divide
-        # for i in range(1, n):
-        #     ind = n - i - 1
-        #     u[ind] = (b[ind] - f[ind] * u[ind+1]) / d[ind] # TODO: save divide
 
         u = thomas_algorithm(e=e, d=d, f=f, b=b)
 

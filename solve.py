@@ -8,15 +8,12 @@ import math
 
 
 ############# TODO #############
-# TODO find numerically stable version of exact solution
-# TODO might need to change to long double
-# TODO experiments
-# TODO plug in reference solution
-# TODO calculate distance / error
 # TODO setup notebook to generate all tables & figures
 # TODO Docstrings, comments & README
 # TODO (OPTIONAL) benchmark against to SymPy
 # TODO cleanup on aisle 5
+# TODO check format of multi-plotters --> modify tight layout rect
+# NOTE: multiple solvers do not support reference solution !
 
 
 def thomas_algorithm(
@@ -74,27 +71,29 @@ class ReactionDiffusionEquation():
         self,
         eps: float = 1, 
         n: int = 3, 
-        optimized_grid: bool = False,
+        shishkin_mesh: bool = False,
         sigma: float = 2,
         advanced_solve: bool = False,
+        double_mesh: bool = False,
         verbose: bool = False,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Union[Tuple[np.ndarray, np.ndarray], 
+            Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]]:
         """
         TODO
         """
         # assert n >= 3
         if n < 3:
             raise ValueError("n must be greater than 2")
-        if optimized_grid and sigma < 2:
-            raise ValueError("sigma must be greater equal than 2 when using an optimized grid")
-        if optimized_grid and sigma < 4 and advanced_solve:
-            raise ValueError("sigma must be greater equal than 4 when using an optimized grid with advanced_solve")
+        if shishkin_mesh and sigma < 2:
+            raise ValueError("sigma must be greater equal than 2 when using a Shishkin mesh")
+        if shishkin_mesh and sigma < 4 and advanced_solve:
+            raise ValueError("sigma must be greater equal than 4 when using a Shishkin mesh with advanced_solve")
 
-        if optimized_grid:
+        if shishkin_mesh:
             if (n-1) % 4 != 0:
                 n = 4 * ((n-1) // 4 + 1) + 1  
                 if verbose:
-                    print(f'Optimized supporting points require n-1 to be divisible by 4, n adjusted to {n}')
+                    print(f'a Shishkin mesh requires n-1 to be divisible by 4, n adjusted to {n}')
 
             tau = np.minimum(1/4, np.log(n-1) * sigma * eps / self.gamma)
             if verbose:
@@ -190,14 +189,18 @@ class ReactionDiffusionEquation():
 
         u = thomas_algorithm(e=e, d=d, f=f, b=b)
 
-        return x, u
+        if double_mesh:
+            x_ref, u_ref = self._get_reference_solution(x, eps=eps, n=n, advanced_solve=advanced_solve)
+            return (x, u), (x_ref, u_ref)
+        else:
+            return x, u
 
 
     def plot_solve(
         self,
         eps: float = 1, 
         n: int = 3, 
-        optimized_grid: bool = False,
+        shishkin_mesh: bool = False,
         sigma: float = 2,
         advanced_solve: bool = False,
         verbose: bool = False,
@@ -206,7 +209,7 @@ class ReactionDiffusionEquation():
         support: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
         
-        x, u = self.solve(eps=eps, n=n, optimized_grid=optimized_grid, sigma=sigma, 
+        x, u = self.solve(eps=eps, n=n, shishkin_mesh=shishkin_mesh, sigma=sigma, 
                             advanced_solve=advanced_solve, verbose=verbose)
 
         plt.figure(figsize=(16,10))
@@ -237,8 +240,8 @@ class ReactionDiffusionEquation():
 
         plt.xlabel('x')
         plt.ylabel('u(x)')
-        plt.title(f'Approximation of u(x) with eps = {eps} and {n} {"optimized" if optimized_grid else "equally distributed"} \
-supporting points', fontsize=20)
+        plt.title(f'Approximation of u(x) with eps = {eps} and a {"Shishkin" if shishkin_mesh else "uniform"} \
+mesh with {n} mesh points', fontsize=20)
         plt.show()
 
         return x, u
@@ -248,27 +251,27 @@ supporting points', fontsize=20)
         self,
         eps: Union[List, np.ndarray], 
         n: int = 3, 
-        optimized_grid: bool = False,
+        shishkin_mesh: bool = False,
         sigma: float = 2,
         advanced_solve: bool = False,
         verbose: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
-        if optimized_grid:
+        if shishkin_mesh:
             if (n-1) % 4 != 0:
                 n = 4 * ((n-1) // 4 + 1) + 1  
-        solutions = np.zeros((n, len(eps)), np.float64)
-        for i, e in enumerate(eps):
-            x, u = self.solve(eps=e, n=n, optimized_grid=optimized_grid, sigma=sigma, 
+        solutions = []
+        for e in eps:
+            x, u = self.solve(eps=e, n=n, shishkin_mesh=shishkin_mesh, sigma=sigma, 
                             advanced_solve=advanced_solve, verbose=verbose)
-            solutions[:, i] = u
-        return x, solutions
+            solutions.append((x, u))
+        return solutions
             
 
     def plot_solve_multiple_eps(
         self,
         eps: Union[List, np.ndarray], 
         n: int = 3, 
-        optimized_grid: bool = False,
+        shishkin_mesh: bool = False,
         sigma: float = 2,
         advanced_solve: bool = False,
         verbose: bool = False,
@@ -277,12 +280,12 @@ supporting points', fontsize=20)
         scatter: bool = True,
         support: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
-        x, solutions = self.solve_multiple_eps(eps=eps, n=n, optimized_grid=optimized_grid, sigma=sigma, 
+        solutions = self.solve_multiple_eps(eps=eps, n=n, shishkin_mesh=shishkin_mesh, sigma=sigma, 
                                             advanced_solve=advanced_solve, verbose=verbose)
-
         if subplots:
-            fig, axes = plt.subplots(math.ceil(len(eps)/2), 2, figsize=(16,10), tight_layout=True)
-            for i, (u, ax) in enumerate(zip(solutions.T, axes.flatten())):
+            height = 5 * math.ceil(len(eps)/2)
+            fig, axes = plt.subplots(math.ceil(len(eps)/2), 2, figsize=(16,height), tight_layout=True)
+            for i, ((x, u), ax) in enumerate(zip(solutions, axes.flatten())):
                 
                 if scatter:
                     sns.scatterplot(x=x, y=u, color='black', ax=ax)
@@ -313,13 +316,13 @@ supporting points', fontsize=20)
                 ax.set_xlabel('x')
                 ax.set_ylabel('u(x)')
 
-            fig.suptitle(f'Approximation of u(x) with {n} {"optimized" if optimized_grid else "equally distributed"} \
-supporting points for various values of epsilon', fontsize=20)
+            fig.suptitle(f'Approximation of u(x) with a {"Shishkin" if shishkin_mesh else "uniform"} \
+mesh \n with {n} mesh points for various values of epsilon', fontsize=20)
             plt.show()
 
         else:
             plt.figure(figsize=(16,10))
-            for i, u in enumerate(solutions.T):
+            for i, (x, u) in enumerate(solutions):
                 
                 if scatter:
                     sns.scatterplot(x=x, y=u, color='black')
@@ -338,7 +341,7 @@ supporting points for various values of epsilon', fontsize=20)
                     ynew = f(xnew)   # use interpolation function returned by `interp1d`
                     plt.plot(xnew, ynew, '-', linewidth=2, label=f'eps = {eps[i]}')
 
-            if support:
+            if support and not shishkin_mesh:
                 for j in x:
                     plt.axvline(x=[j], color='lightgray')
             else:
@@ -347,8 +350,8 @@ supporting points for various values of epsilon', fontsize=20)
             plt.legend()
             plt.xlabel('x')
             plt.ylabel('u(x)')
-            plt.title(f'Approximation of u(x) with {n} {"optimized" if optimized_grid else "equally distributed"} \
-supporting points for various values of epsilon', fontsize=20)
+            plt.title(f'Approximation of u(x) with a {"Shishkin" if shishkin_mesh else "uniform"} \
+mesh with {n} mesh points \n for various values of epsilon', fontsize=20)
             plt.show()
 
         return x, solutions
@@ -358,7 +361,7 @@ supporting points for various values of epsilon', fontsize=20)
         self,
         n: Union[List, np.ndarray],
         eps: float = 1,
-        optimized_grid: bool = False,
+        shishkin_mesh: bool = False,
         sigma: float = 2,
         advanced_solve: bool = False,
         verbose: bool = False,
@@ -366,7 +369,7 @@ supporting points for various values of epsilon', fontsize=20)
         
         solutions = []
         for i in n:
-            x, u = self.solve(eps=eps, n=i, optimized_grid=optimized_grid, sigma=sigma, 
+            x, u = self.solve(eps=eps, n=i, shishkin_mesh=shishkin_mesh, sigma=sigma, 
                             advanced_solve=advanced_solve, verbose=verbose)
             solutions.append((x, u))
         return solutions
@@ -376,7 +379,7 @@ supporting points for various values of epsilon', fontsize=20)
         self,
         n: Union[List, np.ndarray],
         eps: float = 1,
-        optimized_grid: bool = False,
+        shishkin_mesh: bool = False,
         sigma: float = 2,
         advanced_solve: bool = False,
         verbose: bool = False,
@@ -384,11 +387,12 @@ supporting points for various values of epsilon', fontsize=20)
         subplots: bool = True,
         scatter: bool = True,
     ) -> List:
-        solutions = self.solve_multiple_n(eps=eps, n=n, optimized_grid=optimized_grid, sigma=sigma, 
+        solutions = self.solve_multiple_n(eps=eps, n=n, shishkin_mesh=shishkin_mesh, sigma=sigma, 
                                             advanced_solve=advanced_solve, verbose=verbose)
 
         if subplots:
-            fig, axes = plt.subplots(math.ceil(len(n)/2), 2, figsize=(16,10), tight_layout=True)
+            height = 5 * math.ceil(len(n)/2)
+            fig, axes = plt.subplots(math.ceil(len(n)/2), 2, figsize=(16,height), tight_layout=True)
             for i, ((x, u), ax) in enumerate(zip(solutions, axes.flatten())):
                 
                 if scatter:
@@ -415,8 +419,8 @@ supporting points for various values of epsilon', fontsize=20)
                 ax.set_ylabel('u(x)')
                 ax.grid()
 
-            fig.suptitle(f'Approximation of u(x) with eps = {eps} and {"optimized" if optimized_grid else "equally distributed"} \
-supporting points for various values of n', fontsize=20)
+            fig.suptitle(f'Approximation of u(x) with eps = {eps} and a {"Shishkin" if shishkin_mesh else "uniform"} \
+mesh for various values of n', fontsize=20)
             plt.show()
 
         else:
@@ -443,8 +447,8 @@ supporting points for various values of n', fontsize=20)
             plt.legend()
             plt.xlabel('x')
             plt.ylabel('u(x)')
-            plt.title(f'Approximation of u(x) with {"optimized" if optimized_grid else "equally distributed"} \
-supporting points for various values of n', fontsize=20)
+            plt.title(f'Approximation of u(x) with a {"Shishkin" if shishkin_mesh else "uniform"} \
+mesh for various values of n', fontsize=20)
             plt.grid()
             plt.show()
 
@@ -455,18 +459,18 @@ supporting points for various values of n', fontsize=20)
         self,
         n: int = 3,
         eps: float = 1,
-        sigma: float = 4,
+        sigma: List = [2, 4, 4],
         interpolation: Optional[str] = None,
         subplots: bool = True,
         scatter: bool = True,
     ) -> None:
-        x_base, u_base = self.solve(eps=eps, n=n, optimized_grid=False, sigma=sigma, 
+        x_base, u_base = self.solve(eps=eps, n=n, shishkin_mesh=False, sigma=sigma[0], 
                             advanced_solve=False, verbose=False)
-        x_opt, u_opt = self.solve(eps=eps, n=n, optimized_grid=True, sigma=sigma, 
+        x_opt, u_opt = self.solve(eps=eps, n=n, shishkin_mesh=True, sigma=sigma[0], 
                             advanced_solve=False, verbose=False)
-        x_adv, u_adv = self.solve(eps=eps, n=n, optimized_grid=False, sigma=sigma, 
+        x_adv, u_adv = self.solve(eps=eps, n=n, shishkin_mesh=False, sigma=sigma[1], 
                             advanced_solve=True, verbose=False)
-        x_full, u_full = self.solve(eps=eps, n=n, optimized_grid=True, sigma=sigma, 
+        x_full, u_full = self.solve(eps=eps, n=n, shishkin_mesh=True, sigma=sigma[2], 
                             advanced_solve=True, verbose=False)
         solutions = [(x_base, u_base), (x_opt, u_opt), (x_adv, u_adv), (x_full, u_full)]
         titles = {0: 'base sol.', 1: 'opt. grid', 2: 'adv. sol.', 3: 'adv. sol. w/ opt. grid'}
@@ -552,14 +556,13 @@ using different approaches', fontsize=20)
     def _get_reference_solution(
         self,
         x_old: np.ndarray,
-        eps: float = 1, 
-        
+        eps: float = 1,      
         n: int = 3, 
-        optimized_grid: bool = False,
-        sigma: float = 2,
         advanced_solve: bool = False,
-        verbose: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        generates a reference solution using the double mesh principle.
+        """
         
         # calculate new x
         x_mid_points = 0.5*(x_old[1:] + x_old[:-1])

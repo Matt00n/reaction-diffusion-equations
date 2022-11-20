@@ -21,7 +21,7 @@ def thomas_algorithm(
     b: np.ndarray,
 ) -> np.ndarray:
     """
-    Thomas-Algorithmus
+    Thomas algorithm for solving tridiagonal systems of equations.
 
     Args:
         e: A vector of the entries below the diagonal.
@@ -993,87 +993,3 @@ class BoundedOptimizerStep():
     def __call__(self, x):
         """take a random step but ensure the new position is within the bounds"""
         return np.clip(x + np.random.uniform(-self.stepsize, self.stepsize, np.shape(x)), 0., 1.)
-
-
-    
-
-    """Computes the crossentropy loss between the labels and predictions.
-    Use this crossentropy loss function when there are two or more label
-    classes. We expect labels to be provided in a `one_hot` representation. If
-    you want to provide labels as integers, please use
-    `SparseCategoricalCrossentropy` loss.  There should be `# classes` floating
-    point values per feature.
-    In the snippet below, there is `# classes` floating pointing values per
-    example. The shape of both `y_pred` and `y_true` are
-    `[batch_size, num_classes]`.
-    Standalone usage:
-    >>> y_true = [[0, 1, 0], [0, 0, 1]]
-    >>> y_pred = [[0.05, 0.95, 0], [0.1, 0.8, 0.1]]
-    >>> # Using 'auto'/'sum_over_batch_size' reduction type.
-    >>> cce = tf.keras.losses.CategoricalCrossentropy()
-    >>> cce(y_true, y_pred).numpy()
-    1.177
-    >>> # Calling with 'sample_weight'.
-    >>> cce(y_true, y_pred, sample_weight=tf.constant([0.3, 0.7])).numpy()
-    0.814
-    >>> # Using 'sum' reduction type.
-    >>> cce = tf.keras.losses.CategoricalCrossentropy(
-    ...     reduction=tf.keras.losses.Reduction.SUM)
-    >>> cce(y_true, y_pred).numpy()
-    2.354
-    >>> # Using 'none' reduction type.
-    >>> cce = tf.keras.losses.CategoricalCrossentropy(
-    ...     reduction=tf.keras.losses.Reduction.NONE)
-    >>> cce(y_true, y_pred).numpy()
-    array([0.0513, 2.303], dtype=float32)
-    Usage with the `compile()` API:
-    ```python
-    model.compile(optimizer='sgd',
-                  loss=tf.keras.losses.CategoricalCrossentropy())
-    ```
-    """
-
-"""
-Args:
-      apply_class_balancing: A bool, whether to apply weight balancing on the
-        binary classes 0 and 1.
-      alpha: A weight balancing factor for class 1, default is `0.25` as
-        mentioned in reference [Lin et al., 2018](
-        https://arxiv.org/pdf/1708.02002.pdf).  The weight for class 0 is
-        `1.0 - alpha`.
-      gamma: A focusing parameter used to compute the focal factor, default is
-        `2.0` as mentioned in the reference
-        [Lin et al., 2018](https://arxiv.org/pdf/1708.02002.pdf).
-      from_logits: Whether to interpret `y_pred` as a tensor of
-        [logit](https://en.wikipedia.org/wiki/Logit) values. By default, we
-        assume that `y_pred` are probabilities (i.e., values in `[0, 1]`).
-      label_smoothing: Float in `[0, 1]`. When `0`, no smoothing occurs. When >
-        `0`, we compute the loss between the predicted labels and a smoothed
-        version of the true labels, where the smoothing squeezes the labels
-        towards `0.5`. Larger values of `label_smoothing` correspond to heavier
-        smoothing.
-      axis: The axis along which to compute crossentropy (the features axis).
-        Defaults to `-1`.
-      reduction: Type of `tf.keras.losses.Reduction` to apply to
-        loss. Default value is `AUTO`. `AUTO` indicates that the reduction
-        option will be determined by the usage context. For almost all cases
-        this defaults to `SUM_OVER_BATCH_SIZE`. When used with
-        `tf.distribute.Strategy`, outside of built-in training loops such as
-        `tf.keras`, `compile()` and `fit()`, using `SUM_OVER_BATCH_SIZE` or
-        `AUTO` will raise an error. Please see this custom training [tutorial](
-        https://www.tensorflow.org/tutorials/distribute/custom_training) for
-        more details.
-      name: Name for the op. Defaults to 'binary_focal_crossentropy'.
-
-Returns:
-    A `tf.Tensor`. Has the same type as `x`.
-    """
-
-
-"""Returns actor components for alternating epsilon exploration.
-  Args:
-    policy_network: A feedforward action selecting function.
-    epsilons: epsilons to alternate per-episode for epsilon-greedy exploration.
-  Returns:
-    A feedforward policy.
-  """

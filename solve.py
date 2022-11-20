@@ -9,8 +9,6 @@ import math
 
 ############# TODO #############
 # TODO setup notebook to generate all tables & figures
-# TODO Docstrings & README
-# TODO (OPTIONAL) benchmark against to SymPy
 # TODO cleanup on aisle 5
 # TODO check format of multi-plotters --> modify tight layout rect
 # NOTE: multiple solvers do not support reference solution !
@@ -24,6 +22,15 @@ def thomas_algorithm(
 ) -> np.ndarray:
     """
     Thomas-Algorithmus
+
+    Args:
+        e: A vector of the entries below the diagonal.
+        d: A vector of the entries on the diagonal.
+        f: A vector of the entries above the diagonal.
+        b: A vector of the constants of the system of equations.
+
+    Returns:
+        A solution to the tridiagonal system of equations.
     """
     n = len(b) # get n
     u = np.zeros(n, np.float64) # initialize solution array
@@ -45,8 +52,27 @@ def thomas_algorithm(
 
 class ReactionDiffusionEquation():
     """
-    TODO
+    Class instances represent specific reaction diffusion equations
+    of the form \$\\varepsilon^2 u''(x) + c(x)*u(x) = f(x)\$.
+    The primary class method is `solve` which will compute an 
+    numerical approximation of the solution. In addition, several methods
+    are exposed for convenience. These enable the computation of 
+    multiple approximations for various values of epsilon or numbers
+    of mesh points at once as well as quick plotting.
+
+    Args:
+        f: A callable representing the function on the right side of the 
+            reaction diffusion equation.
+        c: The coefficient of the reaction diffusion equation, can be 
+            constant or a callable.
+        gamma_iterations: Maximum number of iterations for finding the 
+            global minimum of c.
+        gamma_start: Initial value for finding the 
+            global minimum of c.
+        gamma_init_step: Initial step size for finding the 
+            global minimum of c.
     """
+
     def __init__(
         self,
         f: Callable[[Union[float, np.ndarray]], Union[float, np.ndarray]],
@@ -55,10 +81,6 @@ class ReactionDiffusionEquation():
         gamma_start: float = 0.5,
         gamma_init_step: float = 0.5,
     ):
-        """
-        TODO
-        """
-
         self.f = f
         self.c = c
 
@@ -79,7 +101,33 @@ class ReactionDiffusionEquation():
     ) -> Union[Tuple[np.ndarray, np.ndarray], 
             Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]]:
         """
-        TODO
+        Computes an approximation of the solution u(x) of the reaction
+        diffusion problem using a uniform or Shishkin mesh and finite 
+        difference methods.
+
+        Args:
+            eps: A value for epsilon in the reaction diffusion equation.
+            n: The number of mesh points in the discretization.
+            shishkin_mesh: A boolean, whether to use a piecewise-uniform
+                Shishkin mesh rather than a uniform mesh (default).
+            sigma: Parameter of the Shishkin mesh, only relevant if `shishkin_mesh` 
+                is `True`. Only values greater equal 2 are accepted or greater
+                equal 4 when `advanced_solve` is `True`, defaults to `2`.
+            advanced_solve: A boolean, whether to use an advanced finite 
+                difference scheme to determine the tridiagonal system of equations.
+                The default is `False`.
+            double_mesh: A boolean, whether to compute a reference solution  
+                using the double mesh principle. If this is set to `True`, an additional
+                tuple containing the x- and y-values of this reference solution
+                is returned. The default is `False`.
+            verbose: A boolean which controls the verbosity. If set to `True`,
+                the system of equations and further information will be printed.
+                The default is `False`.
+
+        Returns:
+            A tuple of the x- and y-values of the approximation at the mesh points
+            if `double_mesh` is `False` or otherwise this tuple and an additional
+            tuple containing the x- and y-values of the reference solution.
         """
         # NOTE: here n is the total number of mesh points, i.e. n = N + 1
 
@@ -144,9 +192,38 @@ class ReactionDiffusionEquation():
         verbose: bool = False,
         interpolation: Optional[str] = None,
         scatter: bool = True,
-        support: bool = False,
+        mesh: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
-        
+        """
+        Plot an approximation of u(x).
+
+        Args:
+            eps: A value for epsilon in the reaction diffusion equation.
+            n: The number of mesh points in the discretization.
+            shishkin_mesh: A boolean, whether to use a piecewise-uniform
+                Shishkin mesh rather than a uniform mesh (default).
+            sigma: Parameter of the Shishkin mesh, only relevant if `shishkin_mesh` 
+                is `True`. Only values greater equal 2 are accepted or greater
+                equal 4 when `advanced_solve` is `True`, defaults to `2`.
+            advanced_solve: A boolean, whether to use an advanced finite 
+                difference scheme to determine the tridiagonal system of equations.
+                The default is `False`.
+            verbose: A boolean which controls the verbosity. If set to `True`,
+                the system of equations and further information will be printed.
+                The default is `False`.
+            interpolation: A string defining the method to interpolate the 
+                approximations at the mesh points. The available options are
+                `'linear'`, `'quadratic'` and `'cubic'`. Anything else will 
+                result in no interpolation (default).
+            scatter: A boolean, whether to draw points for the approximations
+                at the mesh points. The default is `True`.
+            mesh: A boolean, whether to draw vertical lines at the mesh points.
+                These will be drawn instead of the standard grid lines. The 
+                default is `False`.
+
+        Returns:
+            A tuple of the x- and y-values of the approximation at the mesh points.
+        """
         # get solution
         x, u = self.solve(eps=eps, n=n, shishkin_mesh=shishkin_mesh, sigma=sigma, 
                             advanced_solve=advanced_solve, verbose=verbose)
@@ -172,7 +249,7 @@ class ReactionDiffusionEquation():
             ynew = f(xnew) 
             plt.plot(xnew, ynew, '-', linewidth=3, color='orange')
 
-        if support:
+        if mesh:
             for j in x:
                 plt.axvline(x=[j], color='lightgray')
         else:
@@ -195,7 +272,29 @@ mesh with {n} mesh points', fontsize=20)
         sigma: float = 2,
         advanced_solve: bool = False,
         verbose: bool = False,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> List:
+        """
+        Calculate the approximations of u(x) for various values of epsilon.
+
+        Args:
+            eps: A list of values for epsilon in the reaction diffusion equation.
+            n: The number of mesh points in the discretization.
+            shishkin_mesh: A boolean, whether to use a piecewise-uniform
+                Shishkin mesh rather than a uniform mesh (default).
+            sigma: Parameter of the Shishkin mesh, only relevant if `shishkin_mesh` 
+                is `True`. Only values greater equal 2 are accepted or greater
+                equal 4 when `advanced_solve` is `True`, defaults to `2`.
+            advanced_solve: A boolean, whether to use an advanced finite 
+                difference scheme to determine the tridiagonal system of equations.
+                The default is `False`.
+            verbose: A boolean which controls the verbosity. If set to `True`,
+                the system of equations and further information will be printed.
+                The default is `False`.
+
+        Returns:
+            A list of tuples of the x- and y-values of the approximation at the 
+            mesh points for each given epsilon value.
+        """
         # increase N to be divisible by 4 if using a Shishkin mesh
         if shishkin_mesh:
             if (n-1) % 4 != 0:
@@ -221,8 +320,44 @@ mesh with {n} mesh points', fontsize=20)
         interpolation: Optional[str] = None,
         subplots: bool = True,
         scatter: bool = True,
-        support: bool = False,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+        mesh: bool = False,
+    ) -> List:
+        """
+        Plot the approximations of u(x) for various values of epsilon.
+
+        Args:
+            eps: A list of values for epsilon in the reaction diffusion equation.
+            n: The number of mesh points in the discretization.
+            shishkin_mesh: A boolean, whether to use a piecewise-uniform
+                Shishkin mesh rather than a uniform mesh (default).
+            sigma: Parameter of the Shishkin mesh, only relevant if `shishkin_mesh` 
+                is `True`. Only values greater equal 2 are accepted or greater
+                equal 4 when `advanced_solve` is `True`, defaults to `2`.
+            advanced_solve: A boolean, whether to use an advanced finite 
+                difference scheme to determine the tridiagonal system of equations.
+                The default is `False`.
+            verbose: A boolean which controls the verbosity. If set to `True`,
+                the system of equations and further information will be printed.
+                The default is `False`.
+            interpolation: A string defining the method to interpolate the 
+                approximations at the mesh points. The available options are
+                `'linear'`, `'quadratic'` and `'cubic'`. Anything else will 
+                result in no interpolation (default).
+            subplots: A boolean, whether to create a subplot for each approximation
+                if set to `True` or to draw all approximations in one plot. 
+                The latter may increase comparability across approximations but 
+                gets chaotic when using to many approximations at once.
+                The default is `True`.
+            scatter: A boolean, whether to draw points for the approximations
+                at the mesh points. The default is `True`.
+            mesh: A boolean, whether to draw vertical lines at the mesh points.
+                These will be drawn instead of the standard grid lines. The 
+                default is `False`.
+
+        Returns:
+            A list of tuples of the x- and y-values of the approximation at the 
+            mesh points for each given epsilon value.
+        """
         # get solutions
         solutions = self.solve_multiple_eps(eps=eps, n=n, shishkin_mesh=shishkin_mesh, sigma=sigma, 
                                             advanced_solve=advanced_solve, verbose=verbose)
@@ -253,7 +388,7 @@ mesh with {n} mesh points', fontsize=20)
                     ynew = f(xnew) 
                     ax.plot(xnew, ynew, '-', linewidth=3, color='orange')
 
-                if support:
+                if mesh:
                     for j in x:
                         ax.axvline(x=[j], color='lightgray')
                 else:
@@ -289,7 +424,7 @@ mesh \n with {n} mesh points for various values of epsilon', fontsize=20)
                     ynew = f(xnew)
                     plt.plot(xnew, ynew, '-', linewidth=2, label=f'eps = {eps[i]}')
 
-            if support and not shishkin_mesh:
+            if mesh and not shishkin_mesh:
                 for j in x:
                     plt.axvline(x=[j], color='lightgray')
             else:
@@ -302,7 +437,7 @@ mesh \n with {n} mesh points for various values of epsilon', fontsize=20)
 mesh with {n} mesh points \n for various values of epsilon', fontsize=20)
             plt.show()
 
-        return x, solutions
+        return solutions
 
 
     def solve_multiple_n(
@@ -314,6 +449,29 @@ mesh with {n} mesh points \n for various values of epsilon', fontsize=20)
         advanced_solve: bool = False,
         verbose: bool = False,
     ) -> List:
+        """
+        Calculate the approximations of u(x) for various numbers of mesh points.
+
+        Args:
+            n: A list of values for the number of mesh points in the 
+                discretization.
+            eps: A value for epsilon in the reaction diffusion equation.
+            shishkin_mesh: A boolean, whether to use a piecewise-uniform
+                Shishkin mesh rather than a uniform mesh (default).
+            sigma: Parameter of the Shishkin mesh, only relevant if `shishkin_mesh` 
+                is `True`. Only values greater equal 2 are accepted or greater
+                equal 4 when `advanced_solve` is `True`, defaults to `2`.
+            advanced_solve: A boolean, whether to use an advanced finite 
+                difference scheme to determine the tridiagonal system of equations.
+                The default is `False`.
+            verbose: A boolean which controls the verbosity. If set to `True`,
+                the system of equations and further information will be printed.
+                The default is `False`.
+
+        Returns:
+            A list of tuples of the x- and y-values of the approximation at the 
+            mesh points for each given value of n.
+        """
         # get approximations for each n
         solutions = []
         for i in n:
@@ -335,6 +493,40 @@ mesh with {n} mesh points \n for various values of epsilon', fontsize=20)
         subplots: bool = True,
         scatter: bool = True,
     ) -> List:
+        """
+        Plots the approximations of u(x) for various numbers of mesh points.
+
+        Args:
+            n: A list of values for the number of mesh points in the 
+                discretization.
+            eps: A value for epsilon in the reaction diffusion equation.
+            shishkin_mesh: A boolean, whether to use a piecewise-uniform
+                Shishkin mesh rather than a uniform mesh (default).
+            sigma: Parameter of the Shishkin mesh, only relevant if `shishkin_mesh` 
+                is `True`. Only values greater equal 2 are accepted or greater
+                equal 4 when `advanced_solve` is `True`, defaults to `2`.
+            advanced_solve: A boolean, whether to use an advanced finite 
+                difference scheme to determine the tridiagonal system of equations.
+                The default is `False`.
+            verbose: A boolean which controls the verbosity. If set to `True`,
+                the system of equations and further information will be printed.
+                The default is `False`.
+            interpolation: A string defining the method to interpolate the 
+                approximations at the mesh points. The available options are
+                `'linear'`, `'quadratic'` and `'cubic'`. Anything else will 
+                result in no interpolation (default).
+            subplots: A boolean, whether to create a subplot for each approximation
+                if set to `True` or to draw all approximations in one plot. 
+                The latter may increase comparability across approximations but 
+                gets chaotic when using to many approximations at once.
+                The default is `True`.
+            scatter: A boolean, whether to draw points for the approximations
+                at the mesh points. The default is `True`.
+
+        Returns:
+            A list of tuples of the x- and y-values of the approximation at the 
+            mesh points for each given value of n.
+        """
         # get solutions for each n
         solutions = self.solve_multiple_n(eps=eps, n=n, shishkin_mesh=shishkin_mesh, sigma=sigma, 
                                             advanced_solve=advanced_solve, verbose=verbose)
@@ -415,6 +607,30 @@ mesh for various values of n', fontsize=20)
         subplots: bool = True,
         scatter: bool = True,
     ) -> None:
+        """
+        Plots the approximations using the simple and the advanced 
+        finite difference methods with uniform and Shishkin meshes
+        respectively. 
+
+        Args:
+            n: The number of mesh points in the discretization.
+            eps: A value for epsilon in the reaction diffusion equation.
+            sigma: A list of length 3 containing a parameter of the Shishkin 
+                mesh for each method. The first value must be greater equal 
+                than `2`, the other two greater equal than `4`. Defaults 
+                to `[2, 4, 4]`.
+            interpolation: A string defining the method to interpolate the 
+                approximations at the mesh points. The available options are
+                `'linear'`, `'quadratic'` and `'cubic'`. Anything else will 
+                result in no interpolation (default).
+            subplots: A boolean, whether to create a subplot for each approximation
+                if set to `True` or to draw all approximations in one plot. 
+                The latter may increase comparability across approximations but 
+                gets chaotic when using to many approximations at once.
+                The default is `True`.
+            scatter: A boolean, whether to draw points for the approximations
+                at the mesh points. The default is `True`.
+        """
         # get approximations via each method
         x_base, u_base = self.solve(eps=eps, n=n, shishkin_mesh=False, sigma=sigma[0], 
                             advanced_solve=False, verbose=False)
@@ -457,7 +673,7 @@ mesh for various values of n', fontsize=20)
                 ax.set_ylabel('u(x)')
                 ax.grid()
 
-            fig.suptitle(f'Approximations of u(x) with eps = {eps} and {n} supporting points \
+            fig.suptitle(f'Approximations of u(x) with eps = {eps} and {n} mesh points \
 using different approaches', fontsize=20)
             plt.show()
 
@@ -486,7 +702,7 @@ using different approaches', fontsize=20)
             plt.legend()
             plt.xlabel('x')
             plt.ylabel('u(x)')
-            plt.title(f'Approximations of u(x) with eps = {eps} and {n} supporting points \
+            plt.title(f'Approximations of u(x) with eps = {eps} and {n} mesh points \
 using different approaches', fontsize=20)
             plt.grid()
             plt.show()
@@ -494,7 +710,12 @@ using different approaches', fontsize=20)
 
     def _get_gamma(self):
         """
-        TODO
+        Numerically approximates the global minimum of the coefficient c
+        in the reaction diffusion equation.
+
+        Returns:
+            The square root of the global minimum of the coefficient c
+            in the reaction diffusion equation.
         """
 
         if not callable(self.c):
@@ -519,7 +740,20 @@ using different approaches', fontsize=20)
         advanced_solve: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
-        generates a reference solution using the double mesh principle.
+        Generates a reference solution to a given approximation using the 
+        double mesh principle.
+
+        Args:
+            x_old: An array containing the mesh points of the approximation
+                for which a reference solution shall be calculated.
+            eps: A value for epsilon in the reaction diffusion equation.
+            n: The number of mesh points in the discretization.
+            advanced_solve: A boolean, whether to use an advanced finite 
+                difference scheme to determine the tridiagonal system of equations.
+                The default is `False`.
+
+        Returns:
+            A tuple of the x- and y-values of the reference solution.
         """
         
         # calculate new x by bisecting all intervals 
@@ -543,6 +777,22 @@ using different approaches', fontsize=20)
         n: int, 
         advanced_solve: bool,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Creates the tridiagonal system of linear equations via finite difference methods.
+
+        Args:
+            x: An array of the mesh points.
+            h: An array of the local mesh sizes.
+            eps: A value for epsilon in the reaction diffusion equation.
+            n: The number of mesh points in the discretization.
+            advanced_solve: A boolean, whether to use an advanced finite 
+                difference scheme to determine the tridiagonal system of equations.
+                The default is `False`.
+
+        Returns:
+            A tuple of four arrays. In order: The coefficients below, on and above
+            the diagonal and the constants of the system of equations.
+        """
         # initialization
         e = np.zeros(n, np.float64)
         d = np.ones(n, np.float64)
@@ -589,6 +839,25 @@ using different approaches', fontsize=20)
     
 
     def _get_adv_coefficients(self, i, x, h_plus, h_minus, eps):
+        """
+        Compute the coefficients in the advanced finite difference scheme. 
+        These are determined such that the scheme is exact for all 
+        polynomials with a maximum degree of 5.
+
+        Args:
+            i: The index of the mesh point for which to calculate
+                coefficients
+            x: An array of the mesh points.
+            h_plus: x[i+1] - x[i].
+            h_plus: x[i] - x[i-1].
+            eps: A value for epsilon in the reaction diffusion equation.
+
+        Returns:
+            The six coefficients needed in the advanced finite difference scheme.
+            In order these are `mu_plus`, `mu_zero`, `mu_minus`, `nu_plus`, 
+            `nu_zero` and `nu_minus`.
+        """
+        
         # raise NotImplementedError
 
         # coefficients determined such that the finite difference scheme
@@ -673,6 +942,17 @@ using different approaches', fontsize=20)
         f: np.ndarray,
         b: np.ndarray,
     ) -> None:
+        """
+        Utility function to print out the augmented matrix of 
+        the tridiagonal system of equations.
+
+        Args:
+            n: The number of mesh points.
+            e: A vector of the entries below the diagonal.
+            d: A vector of the entries on the diagonal.
+            f: A vector of the entries above the diagonal.
+            b: A vector of the constants of the system of equations.
+        """
         print('Solving the system of linear equations given by the following augmented matrix (numbers rounded):')
         # fuse vectors into the respective augmented tridiagonal matrix
         sle = np.zeros((n, n+1))
@@ -699,7 +979,14 @@ using different approaches', fontsize=20)
 
 
 class BoundedOptimizerStep():
-    """random displacement with bounds"""
+    """
+    Modified optimizer step to ensure that the optimizer does not
+    step out of bounds. `__call__` will return a random step within
+    the bounds.
+    
+    Args:
+        stepsize: The initial stepsize of the optimizer.
+    """
     def __init__(self, stepsize=0.5):
         self.stepsize = stepsize
 
@@ -708,20 +995,7 @@ class BoundedOptimizerStep():
         return np.clip(x + np.random.uniform(-self.stepsize, self.stepsize, np.shape(x)), 0., 1.)
 
 
-    """
-    Computes fraction of variance that ypred explains about y.
-    Returns 1 - Var[y-ypred] / Var[y]
-    interpretation:
-        ev=0  =>  might as well have predicted zero
-        ev=1  =>  perfect prediction
-        ev<0  =>  worse than just predicting zero
-    :param y_pred: the prediction
-    :param y_true: the expected value
-    :return: explained variance of ypred and y
-    """
-
-
-
+    
 
     """Computes the crossentropy loss between the labels and predictions.
     Use this crossentropy loss function when there are two or more label
@@ -794,3 +1068,12 @@ Args:
 Returns:
     A `tf.Tensor`. Has the same type as `x`.
     """
+
+
+"""Returns actor components for alternating epsilon exploration.
+  Args:
+    policy_network: A feedforward action selecting function.
+    epsilons: epsilons to alternate per-episode for epsilon-greedy exploration.
+  Returns:
+    A feedforward policy.
+  """

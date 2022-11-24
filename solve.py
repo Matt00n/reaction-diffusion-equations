@@ -806,7 +806,7 @@ using different approaches', fontsize=20)
             
             for i in range(1, n-1):
                 # using advanced finite difference scheme
-                mu_plus, mu_zero, mu_minus, nu_plus, nu_zero, nu_minus = self._get_adv_coefficients(h_plus=h[i], h_minus=h[i-1], eps=eps)
+                mu_plus, mu_zero, mu_minus, nu_plus, nu_zero, nu_minus = self._get_adv_coefficients(h_plus=h[i], h_minus=h[i-1])
                 #b[i] = nu_plus * self.f(x[i+1]) + nu_zero * self.f(x[i]) + nu_minus * self.f(x[i-1])
                 b[i] = nu_plus * mod_f[i+1] + nu_zero * mod_f[i] + nu_minus * mod_f[i-1]
 
@@ -841,7 +841,7 @@ using different approaches', fontsize=20)
         return e, d, f, b
     
 
-    def _get_adv_coefficients(self, h_plus, h_minus, eps):
+    def _get_adv_coefficients(self, h_plus, h_minus):
         """
         Compute the coefficients in the advanced finite difference scheme. 
         These are determined such that the scheme is exact for all 
@@ -850,7 +850,6 @@ using different approaches', fontsize=20)
         Args:
             h_plus: x[i+1] - x[i].
             h_plus: x[i] - x[i-1].
-            eps: A value for epsilon in the reaction diffusion equation.
 
         Returns:
             The six coefficients needed in the advanced finite difference scheme.

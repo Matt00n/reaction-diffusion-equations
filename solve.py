@@ -8,8 +8,6 @@ import math
 
 
 ############# TODO #############
-# TODO setup notebook to generate all tables & figures
-# TODO cleanup on aisle 5
 # TODO check format of multi-plotters --> modify tight layout rect
 # NOTE: multiple solvers do not support reference solution !
 

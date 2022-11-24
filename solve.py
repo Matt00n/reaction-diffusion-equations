@@ -804,7 +804,7 @@ using different approaches', fontsize=20)
             
             for i in range(1, n-1):
                 # using advanced finite difference scheme
-                mu_plus, mu_zero, mu_minus, nu_plus, nu_zero, nu_minus = self._get_adv_coefficients(i, x, h_plus=h[i], h_minus=h[i-1], eps=eps)
+                mu_plus, mu_zero, mu_minus, nu_plus, nu_zero, nu_minus = self._get_adv_coefficients(h_plus=h[i], h_minus=h[i-1], eps=eps)
 
                 b[i] = nu_plus * self.f(x[i+1]) + nu_zero * self.f(x[i]) + nu_minus * self.f(x[i-1])
                 # NOTE: h shifted compared to problem description
@@ -838,16 +838,13 @@ using different approaches', fontsize=20)
         return e, d, f, b
     
 
-    def _get_adv_coefficients(self, i, x, h_plus, h_minus, eps):
+    def _get_adv_coefficients(self, h_plus, h_minus, eps):
         """
         Compute the coefficients in the advanced finite difference scheme. 
         These are determined such that the scheme is exact for all 
-        polynomials with a maximum degree of 5.
+        polynomials with a maximum degree of 4.
 
         Args:
-            i: The index of the mesh point for which to calculate
-                coefficients
-            x: An array of the mesh points.
             h_plus: x[i+1] - x[i].
             h_plus: x[i] - x[i-1].
             eps: A value for epsilon in the reaction diffusion equation.
@@ -857,79 +854,13 @@ using different approaches', fontsize=20)
             In order these are `mu_plus`, `mu_zero`, `mu_minus`, `nu_plus`, 
             `nu_zero` and `nu_minus`.
         """
-        
-        # raise NotImplementedError
+        nu_plus = (1 - h_minus**2/(h_plus * (h_plus + h_minus))) / 6
+        nu_zero = (4 + h_minus**2/(h_plus * (h_plus + h_minus)) + h_plus**2/(h_minus * (h_plus + h_minus))) / 6
+        nu_minus = (1 - h_plus**2/(h_minus * (h_plus + h_minus))) / 6
 
-        # coefficients determined such that the finite difference scheme
-        # yields exact solutions for all polynomials with degree <= 5
-        if callable(self.c):
-            c_plus = self.c(x[i+1])
-            c_zero = self.c(x[i])
-            c_minus = self.c(x[i-1])
-        else:
-            c_plus = self.c
-            c_zero = self.c
-            c_minus = self.c
-        
-        
-        mu_plus = - 2 * eps**2 * (
-            - 4 * h_minus**4 * h_plus**2 * c_plus + 3 * h_minus**3 * h_plus**3 * c_minus \
-            - 3 * h_minus**3 * h_plus**3 * c_plus + 4 * h_minus**2 * h_plus**4 * c_minus \
-            + 12 * eps**2 * h_minus**4 + 30 * eps**2 * h_minus**3 * h_plus \
-            - 30 * eps**2 * h_minus * h_plus**3 - 12 * eps**2 * h_plus**4
-        ) / (
-            c_plus * h_plus * (
-                - 3 * h_minus**4 * h_plus**3 * c_minus - 7 * h_minus**3 * h_plus**4 * c_minus \
-                -4 * h_minus**2 * h_plus**5  * c_minus + 12 * eps**2 * h_minus**5 \
-                + 42 * eps**2 * h_minus**4 * h_plus + 30 * eps**2 * h_minus**3 * h_plus**2 \
-                + 30 * eps**2 * h_minus**2 * h_plus**3 + 42 * eps**2 * h_minus * h_plus**4 \
-                + 12 * eps**2 * h_plus**5
-            )
-        )
-
-        mu_zero = 2 * eps**2 * (
-            8 * h_minus**4 * h_plus**2 * c_zero + 3 * h_minus**3 * h_plus**3 * c_minus \
-            + 19 * h_minus**3 * h_plus**3 * c_zero + 4 * h_minus**2 * h_plus**4 * c_minus \
-            + 8 * h_minus**2 * h_plus**4 * c_zero + 12 * eps**2 * h_minus**4 \
-            + 6 * eps**2 * h_minus**3 * h_plus - 36 * eps**2 * h_minus**2 * h_plus**2 \
-            + 6 * eps**2 * h_minus * h_plus**3 + 12 * eps**2 * h_plus**4
-        ) / (
-            c_zero * h_minus * h_plus * (
-                - 3 * h_minus**3 * h_plus**3 * c_minus - 4 * h_minus**2 * h_plus**4 * c_minus \
-                + 12 * eps**2 * h_minus**4 + 30 * eps**2 * h_minus**3 * h_plus \
-                + 30 * eps**2 * h_minus * h_plus**3 + 12 * eps**2 * h_plus**4
-            )
-        )
-
-        mu_minus = 12*eps**4 * (2*h_minus**3 + 3*h_minus**2 * h_plus - 3*h_minus * h_plus**2 - 2*h_plus**3) / (
-            c_minus * h_minus * (
-                - 3 * h_minus**3 * h_plus**3 * c_minus - 4 * h_minus**2 * h_plus**4 * c_minus \
-                + 12 * eps**2 * h_minus**4 + 30 * eps**2 * h_minus**3 * h_plus \
-                + 30 * eps**2 * h_minus * h_plus**3 + 12 * eps**2 * h_plus**4
-            )
-        )
-
-        nu_plus = 2 * eps**2 * h_minus**3 * h_plus * (4 * h_minus + 3 * h_plus) / (
-            - 3 * h_minus**4 * h_plus**3 * c_minus - 7 * h_minus**3 * h_plus**4 * c_minus \
-            - 4 * h_minus**2 * h_plus**5 * c_minus + 12 * eps**2 * h_minus**5 \
-            + 42 * eps**2 * h_minus**4 * h_plus + 30 * eps**2 * h_minus**3 * h_plus**2 \
-            + 30 * eps**2 * h_minus**2 * h_plus**3 + 42 * eps**2 * h_minus * h_plus**4 \
-            + 12 * eps**2 * h_plus**5
-        )
-
-        nu_zero = 2 * eps**2 * h_minus * h_plus * (8*h_minus**2 + 19*h_minus*h_plus + 8*h_plus**2) / (
-            - 3 * h_minus**3 * h_plus**3 * c_minus - 4 * h_minus**2 * h_plus**4 * c_minus \
-            + 12 * eps**2 * h_minus**4 + 30 * eps**2 * h_minus**3 * h_plus \
-            + 30 * eps**2 * h_minus * h_plus**3 + 12 * eps**2 * h_plus**4
-        )
-
-        nu_minus = 2 * (3*h_minus + 4*h_plus) * eps**2 * h_minus * h_plus**3 / (
-            - 3 * h_minus**4 * h_plus**3 * c_minus - 7 * h_minus**3 * h_plus**4 * c_minus \
-            - 4 * h_minus**2 * h_plus**5 * c_minus + 12 * eps**2 * h_minus**5 \
-            + 42 * eps**2 * h_minus**4 * h_plus + 30 * eps**2 * h_minus**3 * h_plus**2 \
-            + 30 * eps**2 * h_minus**2 * h_plus**3 + 42 * eps**2 * h_minus * h_plus**4 \
-            + 12 * eps**2 * h_plus**5
-        )
+        mu_plus = (1 - h_minus**2/(h_plus * (h_plus + h_minus))) / 6
+        mu_zero = (4 + h_minus**2/(h_plus * (h_plus + h_minus)) + h_plus**2/(h_minus * (h_plus + h_minus))) / 6
+        mu_minus = (1 - h_plus**2/(h_minus * (h_plus + h_minus))) / 6
         
         return mu_plus, mu_zero, mu_minus, nu_plus, nu_zero, nu_minus
 

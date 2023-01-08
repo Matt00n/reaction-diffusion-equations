@@ -799,16 +799,11 @@ using different approaches', fontsize=20)
         # first & last row determined by u(x_0) = u(x_n-1) = 0
         if advanced_solve:
             b = np.zeros(n, np.float64)
-            # correction at boundary
-            mod_f = self.f(x)
-            mod_f[0] = 0
-            mod_f[-1] = 0
             
             for i in range(1, n-1):
                 # using advanced finite difference scheme
                 mu_plus, mu_zero, mu_minus, nu_plus, nu_zero, nu_minus = self._get_adv_coefficients(h_plus=h[i], h_minus=h[i-1])
-                #b[i] = nu_plus * self.f(x[i+1]) + nu_zero * self.f(x[i]) + nu_minus * self.f(x[i-1])
-                b[i] = nu_plus * mod_f[i+1] + nu_zero * mod_f[i] + nu_minus * mod_f[i-1]
+                b[i] = nu_plus * self.f(x[i+1]) + nu_zero * self.f(x[i]) + nu_minus * self.f(x[i-1])
 
                 # NOTE: h shifted compared to problem description
                 # i.e. h[0] = h_1 etc.

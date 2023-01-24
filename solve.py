@@ -755,8 +755,13 @@ using different approaches', fontsize=20)
         """
         
         # calculate new x by bisecting all intervals 
-        x_mid_points = 0.5*(x_old[1:] + x_old[:-1])
-        x = np.sort(np.concatenate([x_old, x_mid_points]))
+        x_mid_points = np.concatenate([0.5*(x_old[1:] + x_old[:-1]), 10], axis=None) # calculate midpoints, padded too same length
+        x = np.ravel([x_old, x_mid_points],'F')[:-1] # zip
+        
+        # x_mid_points = 0.5*(x_old[1:] + x_old[:-1]) # old 
+        # x = np.sort(np.concatenate([x_old, x_mid_points])) # old 
+
+        
         
         h = np.diff(x) # calculate new h
         n = len(x) 

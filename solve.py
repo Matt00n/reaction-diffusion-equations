@@ -363,7 +363,7 @@ mesh with {n} mesh points', fontsize=20)
         # plotting
         if subplots:
             height = 5 * math.ceil(len(eps)/2)
-            fig, axes = plt.subplots(math.ceil(len(eps)/2), 2, figsize=(16,height), tight_layout=True)
+            fig, axes = plt.subplots(math.ceil(len(eps)/2), 2, figsize=(16,height), tight_layout=False)
             for i, ((x, u), ax) in enumerate(zip(solutions, axes.flatten())):
                 
                 if scatter:
@@ -398,6 +398,7 @@ mesh with {n} mesh points', fontsize=20)
 
             fig.suptitle(f'Approximation of u(x) with a {"Shishkin" if shishkin_mesh else "uniform"} \
 mesh \n with {n} mesh points for various values of epsilon', fontsize=20)
+            plt.tight_layout(rect=[0, 0.03, 1, 0.98])
             plt.show()
 
         else:
@@ -531,7 +532,7 @@ mesh with {n} mesh points \n for various values of epsilon', fontsize=20)
         # plotting
         if subplots:
             height = 5 * math.ceil(len(n)/2)
-            fig, axes = plt.subplots(math.ceil(len(n)/2), 2, figsize=(16,height), tight_layout=True)
+            fig, axes = plt.subplots(math.ceil(len(n)/2), 2, figsize=(16,height), tight_layout=False)
             for i, ((x, u), ax) in enumerate(zip(solutions, axes.flatten())):
                 
                 if scatter:
@@ -561,6 +562,7 @@ mesh with {n} mesh points \n for various values of epsilon', fontsize=20)
 
             fig.suptitle(f'Approximation of u(x) with eps = {eps} and a {"Shishkin" if shishkin_mesh else "uniform"} \
 mesh for various values of n', fontsize=20)
+            plt.tight_layout(rect=[0, 0.03, 1, 0.98])
             plt.show()
 
         else:
